@@ -37,6 +37,7 @@ class Client:
         while True:
             # data = self._recvall(self._buffer_size)
             data, addr = self._sock.recvfrom(self._buffer_size)
+            print(f'{addr[0]}:{gethostbyname(gethostname())}')
             if addr[0] != gethostbyname(gethostname()):
                 self._stream.write(data)
 

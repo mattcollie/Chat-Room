@@ -5,7 +5,7 @@ import pyaudio
 
 class Client:
 
-    def __init__(self, host='', port=37020, buffer_size=4096, format=pyaudio.paInt16, channels=2, rate=44100, chunk=1024):
+    def __init__(self, host='', port=37020, buffer_size=4096, format=pyaudio.paInt16, channels=2, rate=44100, chunk=256):
         self._host = host
         self._port = port
         self._buffer_size = buffer_size
@@ -14,12 +14,12 @@ class Client:
         self._rate = rate
         self._chunk = chunk
         self._sock = socket(AF_INET, SOCK_DGRAM)  # UDP
-        self._sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
-        self._sock.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1)
+        self._sock.setsockopt(SOL_SOCKET, SO_BROADCAST, 2)
+        self._sock.setsockopt(SOL_SOCKET, SO_REUSEPORT, 2)
 
         audio = pyaudio.PyAudio()
-        self._stream = audio.open(format=format, channels=channels, rate=rate, input=True, output=True,
-                                  frames_per_buffer=chunk)
+        self._stream_in = audio.open(format=format, channels=channels, rate=rate, input=True, frames_per_buffer=chunk)
+        self._stream_out = audio.open(format=format, channels=channels, rate=rate, output=True, frames_per_buffer=chunk)
 
     def start(self):
         self._sock.bind((self._host, self._port))
@@ -28,14 +28,15 @@ class Client:
 
     def _handle_audio_in(self):
         while True:
-            data, addr = self._sock.recvfrom(self._buffer_size)
+            data, addr = self._sock.recvfrom(self._chunk * self._channels * 2)
             if addr[0] != gethostbyname(gethostname()):
-                self._stream.write(data)
+                self._stream_out.write(data, self._chunk)
 
     def _handle_audio_out(self):
         while True:
-            data = self._stream.read(self._chunk, exception_on_overflow=False)
+            data = self._stream_in.read(self._chunk, exception_on_overflow=False)
             self._sock.sendto(data, ('<broadcast>', self._port))
+
 
 client = Client()
 client.start()
